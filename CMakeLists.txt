@@ -7,7 +7,7 @@ endif()
 
 set(THIS_PROJECT_DEPEND
   rclcpp
-  std_msgs
+  geometry_msgs
   sensor_msgs
 )
 
