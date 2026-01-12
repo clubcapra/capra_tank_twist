@@ -29,7 +29,7 @@ public:
 
     // Publisher
     twist_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
-      "/diff_drive_controller/cmd_vel_unstamped", 1);
+      "/cmd_vel", 1);
 
     // Subscription
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
