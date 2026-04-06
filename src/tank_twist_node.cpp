@@ -3,6 +3,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 
 class TankTwistNode : public rclcpp::Node
 {
@@ -21,7 +22,7 @@ public:
       this->declare_parameter<double>("left_wheel_radius_multiplier", -0.0325);
     right_wheel_radius_multiplier_ =
       this->declare_parameter<double>("right_wheel_radius_multiplier", 0.0325);
-    speed_scale_ = 
+    speed_scale_ =
       this->declare_parameter<double>("speed_scale", 1.0);
 
     joy_left_track_axis_ =
@@ -31,9 +32,17 @@ public:
     enable_button_ =
       this->declare_parameter<int>("enable_button", 1);
 
-    // Publisher
-    twist_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
-      "/cmd_vel", 1);
+    publish_stamped_ =
+      this->declare_parameter<bool>("publish_stamped", false);
+
+    // Publishers — only one is created depending on publish_stamped_
+    if (publish_stamped_) {
+      twist_stamped_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
+        "/cmd_vel", 1);
+    } else {
+      twist_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
+        "/cmd_vel", 1);
+    }
 
     // Subscription
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
@@ -44,6 +53,18 @@ public:
   }
 
 private:
+  void publish(const geometry_msgs::msg::Twist & twist, const std_msgs::msg::Header & header)
+  {
+    if (publish_stamped_) {
+      geometry_msgs::msg::TwistStamped msg;
+      msg.header = header;
+      msg.twist  = twist;
+      twist_stamped_pub_->publish(msg);
+    } else {
+      twist_pub_->publish(twist);
+    }
+  }
+
   void onJoy(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     // Safety check
@@ -72,7 +93,7 @@ private:
       if (!last_enable_) {
         return;
       }
-      twist_pub_->publish(twist);
+      publish(twist, msg->header);
       last_enable_ = false;
       return;
     }
@@ -86,7 +107,7 @@ private:
     double ws  = wheel_separation_multiplier_ * wheel_separation_;
     double lwr = left_wheel_radius_multiplier_ * wheel_radius_;
     double rwr = right_wheel_radius_multiplier_ * wheel_radius_;
-    
+
     // Interpret joystick axis directly as wheel velocities
     double vel_left  = left_track * speed_scale_;
     double vel_right = right_track * speed_scale_;
@@ -97,11 +118,10 @@ private:
     double ang = (vel_right * rwr - vel_left * lwr) / ws;
     RCLCPP_INFO(get_logger(), "lin %.3f ang %.3f", lin, ang);
 
-
     twist.linear.x  = lin;
     twist.angular.z = ang;
 
-    twist_pub_->publish(twist);
+    publish(twist, msg->header);
   }
 
   // Parameters
@@ -114,12 +134,14 @@ private:
   int joy_left_track_axis_;
   int joy_right_track_axis_;
   int enable_button_;
+  bool publish_stamped_;
 
   bool last_enable_ = false;
 
   // ROS interfaces
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twist_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr        twist_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_stamped_pub_;
 };
 
 int main(int argc, char ** argv)
