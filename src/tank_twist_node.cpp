@@ -101,7 +101,6 @@ private:
 
     double left_track  = msg->axes[joy_left_track_axis_];
     double right_track = msg->axes[joy_right_track_axis_];
-    RCLCPP_INFO(get_logger(), "left %.3f right %.3f", left_track, right_track);
 
     // Apply multipliers (same as diff_drive_controller)
     double ws  = wheel_separation_multiplier_ * wheel_separation_;
@@ -111,12 +110,10 @@ private:
     // Interpret joystick axis directly as wheel velocities
     double vel_left  = left_track * speed_scale_;
     double vel_right = right_track * speed_scale_;
-    RCLCPP_INFO(get_logger(), "vel left %.3f vel right %.3f", vel_left, vel_right);
 
     // Invert diff_drive equations to get Twist
     double lin = (vel_left * lwr + vel_right * rwr) / 2.0;
     double ang = (vel_right * rwr - vel_left * lwr) / ws;
-    RCLCPP_INFO(get_logger(), "lin %.3f ang %.3f", lin, ang);
 
     twist.linear.x  = lin;
     twist.angular.z = ang;
